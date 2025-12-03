@@ -1,4 +1,5 @@
 import time
+import random
 #import l76x
 import math
 from machine import UART, Pin
@@ -9,6 +10,10 @@ print("buh1")
 
 
 sx = SX1262(spi_bus=1, clk=10, mosi=11, miso=12, cs=3, irq=20, rst=15, gpio=2)
+loaded = 1
+heavy = 0
+convoy_size = 2
+rid = random.randint(0,999)
 
 # LoRa
 sx.begin(freq=915, bw=250.0, sf=12, cr=8, syncWord=0x12,
@@ -38,6 +43,8 @@ while True:
         pos[1][1] = -pos[1][1]
     easy_pos = [pos[0][1], pos[1][1]]
     
+    transmission_list = [rid, easy_pos[0], easy_pos[1], loaded, heavy, convoy_size]
+
     # serialise
     serial_pos = str(easy_pos[0]) + ',' + str(easy_pos[1])
     

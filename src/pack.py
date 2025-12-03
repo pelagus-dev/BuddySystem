@@ -1,3 +1,50 @@
+def load(input_list):
+    number_string = ''
+    rid, lat, lon, loaded, heavy, convoy_size = input_list
+    number_string += str(rid).zfill(3)
+    quadrant = 0
+
+    # i swear the order of these is not political, it's just numerical
+    # don't need more Mercator projection kind of discourse
+    if (lat > 0 and lon > 0):
+        quadrant = 1
+    elif (lat > 0 and lon < 0):
+        quadrant = 2
+    elif (lat < 0 and lon > 0):
+        quadrant = 3
+    elif (lat < 0 and lon < 0):
+        quadrant = 4
+    number_string += str(quadrant)
+
+    # maul lat and lon into number strings so that we can, you guessed it...
+    lat, lon = str(abs(lat)), str(abs(lon))
+    lat = lat.replace('.','')
+    lon = lon.replace('.','')
+    lat.zfill(7)
+    lon.zfill(8)
+
+    # ... add 'em to the string
+    number_string += (lat + lon)
+
+    # again, this is subjective and based on the "bigness" of the vehicle
+    veh_type = 0
+    if (loaded == 1 and heavy == 1):
+        veh_type = 4
+    elif (loaded == 0 and heavy == 1):
+        veh_type = 3
+    elif (loaded == 1 and heavy == 0):
+        veh_type = 2
+    elif (loaded == 0 and heavy == 0):
+        veh_type = 1
+    
+    number_string += str(veh_type)
+
+    number_string += str(convoy_size)
+
+    print(len(number_string))
+    print(number_string)
+    return number_string
+
 def compress(number_string):
     """Compress a string of decimal digits into ascii. Accepts only strings of digits 0-9. Returns cursed ASCII text."""
     ct = {
@@ -230,3 +277,7 @@ def extract(ascii_string):
         extracto += et[i]
     
     return extracto
+
+if __name__ == "__main__":
+    test_input = [67,52.07478,-116.2746,1,0,1]
+    print(f"\n{compress(load(test_input))}")
