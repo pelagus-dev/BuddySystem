@@ -45,6 +45,37 @@ def load(input_list):
     print(number_string)
     return number_string
 
+def unload(number_string):
+    rid = int(number_string[0:3].lstrip('0'))
+    quadrant = int(number_string[3])
+
+    lat = number_string[4:11]
+    lon = number_string[11:18]
+    lat = float(lat[0:2] + '.' + lat[2:])
+    lon = float(lon[0:3] + '.' + lon[3:])
+
+    if (quadrant > 2):
+        lat = -lat
+    if (quadrant == 2 or quadrant == 4):
+        lon = -lon
+
+    veh_type = int(number_string[18])
+    if (veh_type == 4):
+        loaded = 1
+        heavy = 1
+    elif (veh_type == 3):
+        loaded = 0
+        heavy = 1
+    elif (veh_type == 2):
+        loaded = 1
+        heavy = 0
+    elif (veh_type == 1):
+        loaded = 0
+        heavy = 0
+    
+    convoy_size = int(number_string[19])
+    return [rid, lat, lon, loaded, heavy, convoy_size]
+
 def compress(number_string):
     """Compress a string of decimal digits into ascii. Accepts only strings of digits 0-9. Returns cursed ASCII text."""
     ct = {
