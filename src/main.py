@@ -1,19 +1,63 @@
 import time
 import random
-#import l76x
 import math
 from machine import UART, Pin
 import gnss as g
+import pack as pk
 from sx1262 import SX1262
+import heapq
 
 print("buh1")
 
+# rids, last known distances, full vehlist
+register = [[],[],[]]
+
+def on_recv(events):
+    if events & SX1262.RX_DONE:
+        msg, err = sx.recv()
+        if len(msg) > 0:
+            
+            # parse other device's message
+            error = SX1262.STATUS[err]
+            print(f'received {msg}')
+            print(error)
+            
+            if (error == "ERR_NONE"):
+                msgtext = msg.decode()
+                vehlist = pk.unload(pk.extract(msgtext))
+                rid, lat, lon, loaded, heavy, convoy_size = vehlist
+                coords = [lat, lon]
+                for i in range(len(coords)):
+                    coords[i] = float(coords[i])
+                print(f'other device is at {coords}')
+                distance = g.haversine(coords[1],coords[0],pos[1][1],pos[0][1])
+                print(f'range: {1000*distance} metres')
+
+                # only consider oncoming vehicles
+                if (loaded == 1 and weloaded == 0 or loaded == 0 and weloaded == 1):
+                    if (rid not in register[0]):
+                        register[0].append(vehlist[0])
+                        register[1].append(distance)
+                        register[2].append(vehlist)
+
+            # SPHAGETTI CODE :D (select two closest vehicles)
+            c1, c2 = register[1].index(heapq.nsmallest(2,register[1])[0]), register[1].index(heapq.nsmallest(2,register[1])[1])
+
+            for i in range(len(register[0])):
+                if (not (i == c1 or i == c2)):
+                    register[0].pop(i)
+                    register[1].pop(i)
+                    register[2].pop(i)
+            
+            for i in range(len(register[0])):
+                if (register[2][i][4] == 1):
+                    hvyStr = "HVY"
+                elif (register[2][i][4] == 0):
+                    hvyStr = "LGT"
+                print(f'{str(register[2][i][5])} {hvyStr} @ {register[0][i]}m')
+                
 
 sx = SX1262(spi_bus=1, clk=10, mosi=11, miso=12, cs=3, irq=20, rst=15, gpio=2)
-loaded = 1
-heavy = 0
-convoy_size = 2
-rid = random.randint(0,999)
 
 # LoRa
 sx.begin(freq=915, bw=250.0, sf=12, cr=8, syncWord=0x12,
@@ -22,16 +66,15 @@ sx.begin(freq=915, bw=250.0, sf=12, cr=8, syncWord=0x12,
          crcOn=True, txIq=False, rxIq=False,
          tcxoVoltage=1.7, useRegulatorLDO=False, blocking=True)
 
-# FSK
-##sx.beginFSK(freq=923, br=48.0, freqDev=50.0, rxBw=156.2, power=-5, currentLimit=60.0,
-##            preambleLength=16, dataShaping=0.5, syncWord=[0x2D, 0x01], syncBitsLength=16,
-##            addrFilter=SX126X_GFSK_ADDRESS_FILT_OFF, addr=0x00, crcLength=2, crcInitial=0x1D0F, crcPolynomial=0x1021,
-##            crcInverted=True, whiteningOn=True, whiteningInitial=0x0100,
-##            fixedPacketLength=False, packetLength=0xFF, preambleDetectorLength=SX126X_GFSK_PREAMBLE_DETECT_16,
-##            tcxoVoltage=1.6, useRegulatorLDO=False,
-##            blocking=True)
+sx.setBlockingCallback(False, on_recv)
+
+rid = random.randint(0,999)
 
 while True:
+    weloaded = 1
+    weheavy = 0
+    convoy_size = 2
+
     # get our own location
     pos = g.get_position()
     
@@ -43,43 +86,18 @@ while True:
         pos[1][1] = -pos[1][1]
     easy_pos = [pos[0][1], pos[1][1]]
     
-    transmission_list = [rid, easy_pos[0], easy_pos[1], loaded, heavy, convoy_size]
-
-    # serialise
-    serial_pos = str(easy_pos[0]) + ',' + str(easy_pos[1])
+    transmission_list = [rid, easy_pos[0], easy_pos[1], weloaded, weheavy, convoy_size]
+    serialized = pk.compress(pk.load(transmission_list))
     
     # turn into bytearray for OverTheAir transmission
-    ota = str.encode(serial_pos)
-
-    #print(easy_pos)
-    #print(serial_pos)
+    ota = str.encode(serialized)
     
     # send our own position back
     sx.send(ota)
     print(ota)
     print("Sent!!")
-
-    msg, err = sx.recv()
-    if len(msg) > 0:
-        
-        # parse other device's message
-        error = SX1262.STATUS[err]
-        print(f'received {msg}')
-        print(error)
-        
-        msgtext = msg.decode()
-        coords = msgtext.split(',')
-        
-        for i in range(len(coords)):
-            coords[i] = float(coords[i])
-        print(f'other device is at {coords}')
-        
-        # compute range
-        distance = g.haversine(coords[1],coords[0],pos[1][1],pos[0][1])
-        print(f'range: {1000*distance} metres')
-        
-        
-    time.sleep(5)                   
+    
+    time.sleep(10)                   
 '''
 x=l76x.L76X()
 x.L76X_Set_Baudrate(9600)
@@ -102,7 +120,6 @@ x.L76X_Send_Command(x.SET_SYNC_PPS_NMEA_ON)
 #x.config.StandBy.value(1)
 
 while(1):
-    
     RSTime, RSLattitude, RSLongtitude, RSGroundSpeed, RSDirection, RSDate, RSVariation = x.L76X_Gat_GNRMC()
     print("hi??")
     print ("Time : ", RSTime)
@@ -113,6 +130,5 @@ while(1):
     print ("Today's date : ", RSDate)
     print ("Magnetic Variation : ", RSVariation)
     print ("--------------------------------------------")
-
     time.sleep(5)
 '''
