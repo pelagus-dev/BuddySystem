@@ -92,7 +92,7 @@ while True:
     # turn into bytearray for OverTheAir transmission
     ota = str.encode(serialized)
     
-    # send our own position back
+    # send our own position
     sx.send(ota)
     print(ota)
     print("Sent!!")
