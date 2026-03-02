@@ -60,7 +60,7 @@ def on_recv(events):
 sx = SX1262(spi_bus=1, clk=10, mosi=11, miso=12, cs=3, irq=20, rst=15, gpio=2)
 
 # LoRa
-sx.begin(freq=915, bw=250.0, sf=12, cr=8, syncWord=0x12,
+sx.begin(freq=915, bw=250.0, sf=11, cr=8, syncWord=0x12,
          power=22, currentLimit=140.0, preambleLength=8,
          implicit=False, implicitLen=0xFF,
          crcOn=True, txIq=False, rxIq=False,
