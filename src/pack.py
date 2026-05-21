@@ -1,7 +1,11 @@
+def zfl(s, width):
+# Pads the provided string with leading 0's to suit the specified 'chrs' length
+# Force # characters, fill with leading 0's
+    return '{:0>{w}}'.format(s, w=width)
 def load(input_list):
     number_string = ''
     rid, lat, lon, loaded, heavy, convoy_size = input_list
-    number_string += str(rid).zfill(3)
+    number_string += zfl(str(rid), 3)
     quadrant = 0
 
     # i swear the order of these is not political, it's just numerical
@@ -17,12 +21,22 @@ def load(input_list):
     number_string += str(quadrant)
 
     # maul lat and lon into number strings so that we can, you guessed it...
-    lat, lon = str(abs(lat)), str(abs(lon))
+    lat, lon = abs(lat), abs(lon)
+    if len(str(round(lon % 1, 4))) < 6:
+        lon = str(lon) + "0"
+    else:
+        lon = str(lon)
+
+    if len(str(round(lat % 1, 5))) < 7:
+        lat = str(lat) + "0"
+    else:
+        lat = str(lat)
     lat = lat.replace('.','')
     lon = lon.replace('.','')
-    lat.zfill(7)
-    lon.zfill(8)
+    lat = zfl(lat, 7)
+    lon = zfl(lon, 7)
 
+    print(f'lat: {lat}, lon: {lon}')
     # ... add 'em to the string
     number_string += (lat + lon)
 
@@ -310,5 +324,5 @@ def extract(ascii_string):
     return extracto
 
 if __name__ == "__main__":
-    test_input = [67,52.07478,-116.2746,1,0,1]
+    test_input = [67,51.07543,-114.1310,1,0,1]
     print(f"\n{compress(load(test_input))}")

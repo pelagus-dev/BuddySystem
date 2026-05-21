@@ -1,14 +1,15 @@
 import time
 import random
 import math
-from machine import UART, Pin
+from machine import UART, Pin, I2C
 import gnss as g
 import pack as pk
 from sx1262 import SX1262
-import heapq
+from pcf8574 import PCF8574
+from hd44780 import HD44780
+from lcd import LCD
 
 print("buh1")
-
 # rids, last known distances, full vehlist
 register = [[],[],[]]
 
@@ -30,18 +31,31 @@ def on_recv(events):
                 for i in range(len(coords)):
                     coords[i] = float(coords[i])
                 print(f'other device is at {coords}')
+                pos = g.get_position()
+                if (pos[0][0] == 'S'):
+                    pos[0][1] = -pos[0][1]
+                
+                if (pos[1][0] == 'W'):
+                    pos[1][1] = -pos[1][1]
                 distance = g.haversine(coords[1],coords[0],pos[1][1],pos[0][1])
                 print(f'range: {1000*distance} metres')
-
+                
                 # only consider oncoming vehicles
-                if (loaded == 1 and weloaded == 0 or loaded == 0 and weloaded == 1):
+                weloaded = 0
+                print(f'"loaded: " {loaded} "weloaded:" {weloaded}')
+                if ((loaded == 1 and weloaded == 0) or (loaded == 0 and weloaded == 1)):
                     if (rid not in register[0]):
                         register[0].append(vehlist[0])
                         register[1].append(distance)
                         register[2].append(vehlist)
-
+                print(register)
+            
             # SPHAGETTI CODE :D (select two closest vehicles)
-            c1, c2 = register[1].index(heapq.nsmallest(2,register[1])[0]), register[1].index(heapq.nsmallest(2,register[1])[1])
+            if (len(register[0]) > 1):
+                c1, c2 = register[1].index(sorted(register[1])[0]), register[1].index(sorted(register[1])[1])
+            else:
+                c1 = 0
+                c2 = 0
 
             for i in range(len(register[0])):
                 if (not (i == c1 or i == c2)):
@@ -51,11 +65,18 @@ def on_recv(events):
             
             for i in range(len(register[0])):
                 if (register[2][i][4] == 1):
-                    hvyStr = "HVY"
+                    hvyStr = "HEAVY"
                 elif (register[2][i][4] == 0):
-                    hvyStr = "LGT"
-                print(f'{str(register[2][i][5])} {hvyStr} @ {register[0][i]}m')
-                
+                    hvyStr = "LIGHT"
+                lcd.write_line(f'{str(register[2][i][5])} {hvyStr} @ {math.trunc(1000 * register[1][i])}m',i)
+                time.sleep(2)
+
+# startup the display!
+i2c = I2C(0, sda=Pin(4), scl=Pin(5), freq=400000)
+pcf = PCF8574(i2c)
+hd44780 = HD44780(pcf, num_lines=2, num_columns=16)
+lcd = LCD(hd44780, pcf)
+lcd.backlight_on()
 
 sx = SX1262(spi_bus=1, clk=10, mosi=11, miso=12, cs=3, irq=20, rst=15, gpio=2)
 
@@ -69,6 +90,14 @@ sx.begin(freq=915, bw=250.0, sf=11, cr=8, syncWord=0x12,
 sx.setBlockingCallback(False, on_recv)
 
 rid = random.randint(0,999)
+
+lcd.write_line("Buddy System", 0)
+lcd.write_line("Waiting for GPS",1)
+pos = g.get_position()
+lcd.write_line("", 0)
+lcd.write_line("GPS Fix Acquired",1)
+time.sleep(3)
+lcd.write_line("", 1)
 
 while True:
     weloaded = 1
@@ -94,10 +123,11 @@ while True:
     
     # send our own position
     sx.send(ota)
-    print(ota)
-    print("Sent!!")
-    
-    time.sleep(10)                   
+    lcd.write_line("Sent Position!",1)
+
+    time.sleep(2)
+    lcd.write_line("",1)
+    time.sleep(8)              
 '''
 x=l76x.L76X()
 x.L76X_Set_Baudrate(9600)

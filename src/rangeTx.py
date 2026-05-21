@@ -6,7 +6,7 @@ from machine import UART, Pin
 import gnss as g
 from sx1262 import SX1262
 
-buh = "Hello"
+buh = "jH3k6arqp"
 ota = str.encode(buh)
 sx.send(ota)
 time.sleep(10)
